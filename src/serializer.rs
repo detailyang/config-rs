@@ -1,30 +1,25 @@
-use serde::ser;
+use ::{Config, Value, ValueKind};
+use error::Result;
 use std::fmt::Display;
-use std::mem;
-
-use error::*;
-use value::{Value, ValueKind};
-use Config;
+use ConfigError;
+use serde::ser;
 
 #[derive(Default, Debug)]
-pub struct ConfigSerializer {
+pub struct DefaultConfigSerializer {
     keys: Vec<(String, Option<usize>)>,
     pub output: Config,
 }
 
-impl ConfigSerializer {
+impl DefaultConfigSerializer {
     fn serialize_primitive<T>(&mut self, value: T) -> Result<()>
-    where
-        T: Into<Value> + Display,
+        where
+            T: Into<Value> + Display,
     {
         let key = match self.last_key_index_pair() {
             Some((key, Some(index))) => format!("{}[{}]", key, index),
             Some((key, None)) => key.to_string(),
             None => {
-                return Err(ConfigError::Message(format!(
-                    "key is not found for value {}",
-                    value
-                )))
+                return Err(ConfigError::Message(format!("key is not found for value {}", value)))
             }
         };
         self.output.set_default(&key, value.into())?;
@@ -34,9 +29,7 @@ impl ConfigSerializer {
     fn last_key_index_pair(&self) -> Option<(&str, Option<usize>)> {
         let len = self.keys.len();
         if len > 0 {
-            self.keys
-                .get(len - 1)
-                .map(|&(ref key, opt)| (key.as_str(), opt))
+            self.keys.get(len - 1).map(|&(ref key, opt)| (key.as_str(), opt))
         } else {
             None
         }
@@ -48,10 +41,7 @@ impl ConfigSerializer {
             self.keys
                 .get_mut(len - 1)
                 .map(|pair| pair.1 = pair.1.map(|i| i + 1).or(Some(0)))
-                .ok_or(ConfigError::Message(format!(
-                    "last key is not found in {} keys",
-                    len
-                )))
+                .ok_or(ConfigError::Message(format!("last key is not found in {} keys", len)))
         } else {
             Err(ConfigError::Message("keys is empty".to_string()))
         }
@@ -81,7 +71,7 @@ impl ConfigSerializer {
     }
 }
 
-impl<'a> ser::Serializer for &'a mut ConfigSerializer {
+impl<'a> ser::Serializer for &'a mut DefaultConfigSerializer {
     type Ok = ();
     type Error = ConfigError;
     type SerializeSeq = Self;
@@ -166,8 +156,8 @@ impl<'a> ser::Serializer for &'a mut ConfigSerializer {
     }
 
     fn serialize_some<T>(self, value: &T) -> Result<Self::Ok>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         value.serialize(self)
     }
@@ -190,8 +180,8 @@ impl<'a> ser::Serializer for &'a mut ConfigSerializer {
     }
 
     fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<Self::Ok>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         value.serialize(self)
     }
@@ -203,8 +193,8 @@ impl<'a> ser::Serializer for &'a mut ConfigSerializer {
         variant: &'static str,
         value: &T,
     ) -> Result<Self::Ok>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         self.push_key(&variant);
         value.serialize(&mut *self)?;
@@ -259,13 +249,13 @@ impl<'a> ser::Serializer for &'a mut ConfigSerializer {
     }
 }
 
-impl<'a> ser::SerializeSeq for &'a mut ConfigSerializer {
+impl<'a> ser::SerializeSeq for &'a mut DefaultConfigSerializer {
     type Ok = ();
     type Error = ConfigError;
 
     fn serialize_element<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         self.inc_last_key_index()?;
         value.serialize(&mut **self)?;
@@ -277,13 +267,13 @@ impl<'a> ser::SerializeSeq for &'a mut ConfigSerializer {
     }
 }
 
-impl<'a> ser::SerializeTuple for &'a mut ConfigSerializer {
+impl<'a> ser::SerializeTuple for &'a mut DefaultConfigSerializer {
     type Ok = ();
     type Error = ConfigError;
 
     fn serialize_element<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         self.inc_last_key_index()?;
         value.serialize(&mut **self)?;
@@ -295,13 +285,13 @@ impl<'a> ser::SerializeTuple for &'a mut ConfigSerializer {
     }
 }
 
-impl<'a> ser::SerializeTupleStruct for &'a mut ConfigSerializer {
+impl<'a> ser::SerializeTupleStruct for &'a mut DefaultConfigSerializer {
     type Ok = ();
     type Error = ConfigError;
 
     fn serialize_field<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         self.inc_last_key_index()?;
         value.serialize(&mut **self)?;
@@ -313,13 +303,13 @@ impl<'a> ser::SerializeTupleStruct for &'a mut ConfigSerializer {
     }
 }
 
-impl<'a> ser::SerializeTupleVariant for &'a mut ConfigSerializer {
+impl<'a> ser::SerializeTupleVariant for &'a mut DefaultConfigSerializer {
     type Ok = ();
     type Error = ConfigError;
 
     fn serialize_field<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         self.inc_last_key_index()?;
         value.serialize(&mut **self)?;
@@ -332,13 +322,13 @@ impl<'a> ser::SerializeTupleVariant for &'a mut ConfigSerializer {
     }
 }
 
-impl<'a> ser::SerializeMap for &'a mut ConfigSerializer {
+impl<'a> ser::SerializeMap for &'a mut DefaultConfigSerializer {
     type Ok = ();
     type Error = ConfigError;
 
     fn serialize_key<T>(&mut self, key: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         let key_serializer = StringKeySerializer;
         let key = key.serialize(key_serializer)?;
@@ -347,8 +337,8 @@ impl<'a> ser::SerializeMap for &'a mut ConfigSerializer {
     }
 
     fn serialize_value<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         value.serialize(&mut **self)?;
         self.pop_key();
@@ -360,13 +350,13 @@ impl<'a> ser::SerializeMap for &'a mut ConfigSerializer {
     }
 }
 
-impl<'a> ser::SerializeStruct for &'a mut ConfigSerializer {
+impl<'a> ser::SerializeStruct for &'a mut DefaultConfigSerializer {
     type Ok = ();
     type Error = ConfigError;
 
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         self.push_key(key);
         value.serialize(&mut **self)?;
@@ -379,13 +369,13 @@ impl<'a> ser::SerializeStruct for &'a mut ConfigSerializer {
     }
 }
 
-impl<'a> ser::SerializeStructVariant for &'a mut ConfigSerializer {
+impl<'a> ser::SerializeStructVariant for &'a mut DefaultConfigSerializer {
     type Ok = ();
     type Error = ConfigError;
 
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         self.push_key(key);
         value.serialize(&mut **self)?;
@@ -473,8 +463,8 @@ impl ser::Serializer for StringKeySerializer {
     }
 
     fn serialize_some<T>(self, value: &T) -> Result<Self::Ok>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         value.serialize(self)
     }
@@ -497,8 +487,8 @@ impl ser::Serializer for StringKeySerializer {
     }
 
     fn serialize_newtype_struct<T>(self, _name: &str, value: &T) -> Result<Self::Ok>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         value.serialize(self)
     }
@@ -510,29 +500,22 @@ impl ser::Serializer for StringKeySerializer {
         _variant: &str,
         value: &T,
     ) -> Result<Self::Ok>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         value.serialize(self)
     }
 
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
-        Err(ConfigError::Message(
-            "seq can't serialize to string key".to_string(),
-        ))
+        Err(ConfigError::Message("seq can't serialize to string key".to_string()))
     }
 
     fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
-        Err(ConfigError::Message(
-            "tuple can't serialize to string key".to_string(),
-        ))
+        Err(ConfigError::Message("tuple can't serialize to string key".to_string()))
     }
 
     fn serialize_tuple_struct(self, name: &str, _len: usize) -> Result<Self::SerializeTupleStruct> {
-        Err(ConfigError::Message(format!(
-            "tuple struct {} can't serialize to string key",
-            name
-        )))
+        Err(ConfigError::Message(format!("tuple struct {} can't serialize to string key", name)))
     }
 
     fn serialize_tuple_variant(
@@ -549,16 +532,11 @@ impl ser::Serializer for StringKeySerializer {
     }
 
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
-        Err(ConfigError::Message(
-            "map can't serialize to string key".to_string(),
-        ))
+        Err(ConfigError::Message("map can't serialize to string key".to_string()))
     }
 
     fn serialize_struct(self, name: &str, _len: usize) -> Result<Self::SerializeStruct> {
-        Err(ConfigError::Message(format!(
-            "struct {} can't serialize to string key",
-            name
-        )))
+        Err(ConfigError::Message(format!("struct {} can't serialize to string key", name)))
     }
 
     fn serialize_struct_variant(
@@ -580,8 +558,8 @@ impl ser::SerializeSeq for StringKeySerializer {
     type Error = ConfigError;
 
     fn serialize_element<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         unreachable!()
     }
@@ -596,8 +574,8 @@ impl ser::SerializeTuple for StringKeySerializer {
     type Error = ConfigError;
 
     fn serialize_element<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         unreachable!()
     }
@@ -612,8 +590,8 @@ impl ser::SerializeTupleStruct for StringKeySerializer {
     type Error = ConfigError;
 
     fn serialize_field<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         unreachable!()
     }
@@ -628,8 +606,8 @@ impl ser::SerializeTupleVariant for StringKeySerializer {
     type Error = ConfigError;
 
     fn serialize_field<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         unreachable!()
     }
@@ -644,15 +622,15 @@ impl ser::SerializeMap for StringKeySerializer {
     type Error = ConfigError;
 
     fn serialize_key<T>(&mut self, key: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         unreachable!()
     }
 
     fn serialize_value<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         unreachable!()
     }
@@ -667,8 +645,8 @@ impl ser::SerializeStruct for StringKeySerializer {
     type Error = ConfigError;
 
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         unreachable!()
     }
@@ -683,37 +661,13 @@ impl ser::SerializeStructVariant for StringKeySerializer {
     type Error = ConfigError;
 
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
-    where
-        T: ?Sized + ser::Serialize,
+        where
+            T: ?Sized + ser::Serialize,
     {
         unreachable!()
     }
 
     fn end(self) -> Result<Self::Ok> {
         unreachable!()
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use serde::Serialize;
-
-    #[test]
-    fn test_struct() {
-        #[derive(Debug, Serialize, Deserialize, PartialEq)]
-        struct Test {
-            int: u32,
-            seq: Vec<String>,
-        }
-
-        let test = Test {
-            int: 1,
-            seq: vec!["a".to_string(), "b".to_string()],
-        };
-        let config = Config::try_from(&test).unwrap();
-
-        let actual: Test = config.try_into().unwrap();
-        assert_eq!(test, actual);
     }
 }

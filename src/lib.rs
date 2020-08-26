@@ -60,10 +60,13 @@ mod path;
 mod ser;
 mod source;
 mod value;
+mod serializer;
 
+// pub use serializer
 pub use config::Config;
 pub use env::Environment;
-pub use error::ConfigError;
+pub use serializer::DefaultConfigSerializer;
+pub use error::{ConfigError, Result};
 pub use file::{File, FileFormat, FileSourceFile, FileSourceString};
 pub use source::Source;
-pub use value::Value;
+pub use value::{Value, ValueKind};
